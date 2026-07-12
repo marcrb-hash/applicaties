@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1eb">
+  <title>Scheermesje bijhouden</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f4f1eb;
+      --card: #fffdf9;
+      --text: #202724;
+      --muted: #65706b;
+      --primary: #1f6252;
+      --primary-pressed: #184c40;
+      --line: #d9ddd8;
+      --warning-bg: #fff3cd;
+      --warning-text: #684f00;
+      --danger: #b3261e;
+      --danger-bg: #fce8e6;
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100svh;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(32, 39, 36, 0.08);
+      border-radius: var(--radius);
+      padding: 28px 22px;
+      box-shadow: 0 8px 28px rgba(32, 39, 36, 0.07);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 9vw, 3rem);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      text-align: center;
+    }
+
+    h1.over-limit { color: var(--danger); }
+
+    .start-date {
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .warning {
+      display: none;
+      margin: 0 0 20px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--warning-bg);
+      color: var(--warning-text);
+      font-weight: 750;
+      font-size: 1.05rem;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .warning.visible { display: block; }
+    .warning.danger { background: var(--danger-bg); color: var(--danger); }
+
+    button {
+      width: 100%;
+      min-height: 64px;
+      border: 0;
+      border-radius: 18px;
+      padding: 14px 18px;
+      font: inherit;
+      font-size: 1.18rem;
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus-visible { outline: 4px solid rgba(31, 98, 82, 0.28); outline-offset: 3px; }
+    button:active { transform: translateY(1px); }
+
+    .primary { background: var(--primary); color: white; }
+    .primary:active { background: var(--primary-pressed); }
+
+    .secondary {
+      margin-top: 12px;
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    section { margin-top: 26px; }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+    }
+
+    .history-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      border-top: 1px solid var(--line);
+    }
+
+    .history-list li {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+      line-height: 1.4;
+    }
+
+    .history-list label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .history-list input {
+      width: 24px;
+      height: 24px;
+      margin: 0;
+      accent-color: var(--primary);
+      flex: 0 0 auto;
+    }
+
+    .history-list strong { margin-left: auto; white-space: nowrap; }
+    .empty { margin: 0; color: var(--muted); line-height: 1.5; }
+
+    .delete-selected {
+      min-height: 52px;
+      margin-top: 14px;
+      border: 2px solid var(--danger);
+      background: transparent;
+      color: var(--danger);
+      font-size: 1rem;
+    }
+
+    .delete-selected:disabled {
+      border-color: var(--line);
+      color: var(--muted);
+      cursor: default;
+      opacity: 0.65;
+    }
+
+    details {
+      margin-top: 26px;
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-weight: 750;
+      font-size: 1.05rem;
+    }
+
+    details ol { padding-left: 22px; color: var(--muted); line-height: 1.55; }
+    details li + li { margin-top: 8px; }
+
+    .status {
+      min-height: 1.4em;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(20, 28, 25, 0.58);
+    }
+
+    .confirm-overlay[hidden] { display: none; }
+
+    .confirm-box {
+      width: min(100%, 400px);
+      padding: 26px 22px 22px;
+      border-radius: 22px;
+      background: var(--card);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+      text-align: center;
+    }
+
+    .confirm-box h2 { margin-bottom: 10px; font-size: 1.45rem; }
+    .confirm-box p { margin: 0 0 22px; color: var(--muted); line-height: 1.5; }
+
+    .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .confirm-actions button { min-height: 56px; font-size: 1rem; }
+
+    .cancel-confirm { background: #ecefeb; color: var(--text); }
+    .accept-confirm { background: var(--primary); color: white; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      h1.bump { animation: bump 180ms ease-out; }
+      @keyframes bump { 50% { transform: scale(1.04); } }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1 id="counter">Mesje 0 van 5</h1>
+      <p class="start-date">In gebruik sinds <time id="startDate"></time></p>
+
+      <p id="warning" class="warning" role="alert" aria-live="assertive"></p>
+
+      <button id="shaveButton" class="primary" type="button">Scheren voltooid</button>
+      <button id="newBladeButton" class="secondary" type="button">Nieuw mesje</button>
+      <p id="status" class="status" aria-live="polite"></p>
+
+      <section aria-labelledby="historyTitle">
+        <h2 id="historyTitle">Geschiedenis</h2>
+        <p id="emptyHistory" class="empty">Nog geen mesjes vervangen.</p>
+        <ul id="historyList" class="history-list"></ul>
+        <button id="deleteSelectedButton" class="delete-selected" type="button" disabled hidden>
+          Geselecteerde verwijderen
+        </button>
+      </section>
+
+      <details>
+        <summary>Installeren op Android</summary>
+        <ol>
+          <li>Bewaar dit bestand als <strong>index.html</strong> op je telefoon, bijvoorbeeld in Downloads.</li>
+          <li>Open het via de app Bestanden en kies Chrome als daarom wordt gevraagd.</li>
+          <li>Tik in Chrome op het menu met de drie puntjes en kies <strong>Toevoegen aan startscherm</strong> of <strong>Installeren</strong>.</li>
+          <li>Zie je die optie niet, maak dan een Chrome-bladwijzer of open het bestand voortaan via Bestanden. De teller blijft op hetzelfde toestel en in dezelfde browser bewaard.</li>
+        </ol>
+      </details>
+    </div>
+  </main>
+
+  <div id="confirmOverlay" class="confirm-overlay" hidden>
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+      <h2 id="confirmTitle">Weet je het zeker?</h2>
+      <p id="confirmMessage"></p>
+      <div class="confirm-actions">
+        <button id="cancelConfirm" class="cancel-confirm" type="button">Annuleren</button>
+        <button id="acceptConfirm" class="accept-confirm" type="button">Bevestigen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'scheermesje-tracker-v1';
+      const today = () => new Date().toISOString().slice(0, 10);
+      const defaultState = () => ({ count: 0, startDate: today(), history: [] });
+
+      const counter = document.getElementById('counter');
+      const startDate = document.getElementById('startDate');
+      const warning = document.getElementById('warning');
+      const shaveButton = document.getElementById('shaveButton');
+      const newBladeButton = document.getElementById('newBladeButton');
+      const historyList = document.getElementById('historyList');
+      const emptyHistory = document.getElementById('emptyHistory');
+      const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+      const status = document.getElementById('status');
+      const confirmOverlay = document.getElementById('confirmOverlay');
+      const confirmMessage = document.getElementById('confirmMessage');
+      const cancelConfirm = document.getElementById('cancelConfirm');
+      const acceptConfirm = document.getElementById('acceptConfirm');
+      let pendingConfirmation = null;
+
+      function askForConfirmation(message, action) {
+        confirmMessage.textContent = message;
+        pendingConfirmation = action;
+        confirmOverlay.hidden = false;
+        cancelConfirm.focus();
+      }
+
+      function closeConfirmation() {
+        confirmOverlay.hidden = true;
+        pendingConfirmation = null;
+      }
+
+      cancelConfirm.addEventListener('click', closeConfirmation);
+      confirmOverlay.addEventListener('click', event => {
+        if (event.target === confirmOverlay) closeConfirmation();
+      });
+      acceptConfirm.addEventListener('click', () => {
+        const action = pendingConfirmation;
+        closeConfirmation();
+        if (action) action();
+      });
+
+      function loadState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (!saved || !Number.isInteger(saved.count) || saved.count < 0 ||
+              typeof saved.startDate !== 'string' || !Array.isArray(saved.history)) {
+            return defaultState();
+          }
+          return saved;
+        } catch (_) {
+          return defaultState();
+        }
+      }
+
+      let state = loadState();
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          return true;
+        } catch (_) {
+          status.textContent = 'Opslaan lukte niet. Controleer de browserinstellingen.';
+          return false;
+        }
+      }
+
+      function formatDate(value) {
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return value;
+        return new Intl.DateTimeFormat('nl-NL', {
+          day: 'numeric', month: 'long', year: 'numeric'
+        }).format(new Date(parts[0], parts[1] - 1, parts[2]));
+      }
+
+      function render() {
+        counter.textContent = `Mesje ${state.count} van 5`;
+        counter.classList.toggle('over-limit', state.count >= 6);
+        startDate.dateTime = state.startDate;
+        startDate.textContent = formatDate(state.startDate);
+
+        if (state.count >= 5) {
+          warning.textContent = state.count === 5
+            ? 'Na deze scheerbeurt mesje vervangen'
+            : 'Mesje vervangen — aanbevolen maximum overschreden';
+          warning.classList.add('visible');
+          warning.classList.toggle('danger', state.count >= 6);
+        } else {
+          warning.textContent = '';
+          warning.classList.remove('visible', 'danger');
+        }
+
+        historyList.replaceChildren();
+        emptyHistory.hidden = state.history.length > 0;
+        deleteSelectedButton.hidden = state.history.length === 0;
+        deleteSelectedButton.disabled = true;
+        state.history.map((item, index) => ({ item, index })).reverse().forEach(({ item, index }) => {
+          const li = document.createElement('li');
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input');
+          const date = document.createElement('span');
+          const total = document.createElement('strong');
+          checkbox.type = 'checkbox';
+          checkbox.value = String(index);
+          checkbox.setAttribute('aria-label', `Vervanging van ${formatDate(item.replacedDate)} selecteren`);
+          date.textContent = formatDate(item.replacedDate);
+          total.textContent = `${item.shaves} ${item.shaves === 1 ? 'beurt' : 'beurten'}`;
+          label.append(checkbox, date);
+          li.append(label, total);
+          historyList.append(li);
+        });
+      }
+
+      historyList.addEventListener('change', () => {
+        deleteSelectedButton.disabled = !historyList.querySelector('input:checked');
+      });
+
+      deleteSelectedButton.addEventListener('click', () => {
+        const selected = Array.from(historyList.querySelectorAll('input:checked'))
+          .map(input => Number(input.value));
+        if (selected.length === 0) return;
+
+        askForConfirmation(
+          `${selected.length} ${selected.length === 1 ? 'geselecteerd item' : 'geselecteerde items'} verwijderen?`,
+          () => {
+            const selectedIndexes = new Set(selected);
+            state.history = state.history.filter((_, index) => !selectedIndexes.has(index));
+            saveState();
+            render();
+            status.textContent = selected.length === 1
+              ? 'Geschiedenisitem verwijderd.'
+              : `${selected.length} geschiedenisitems verwijderd.`;
+          }
+        );
+      });
+
+      shaveButton.addEventListener('click', () => {
+        state.count += 1;
+        saveState();
+        render();
+        counter.classList.remove('bump');
+        void counter.offsetWidth;
+        counter.classList.add('bump');
+        status.textContent = 'Scheerbeurt opgeslagen.';
+      });
+
+      newBladeButton.addEventListener('click', () => {
+        askForConfirmation(
+          `Nieuw mesje starten? Het huidige mesje heeft ${state.count} ` +
+          `${state.count === 1 ? 'scheerbeurt' : 'scheerbeurten'}.`,
+          () => {
+            state.history.push({
+              replacedDate: today(),
+              shaves: state.count
+            });
+            state.count = 0;
+            state.startDate = today();
+            saveState();
+            render();
+            status.textContent = 'Nieuw mesje gestart.';
+          }
+        );
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
